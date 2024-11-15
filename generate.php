@@ -12,9 +12,8 @@ if (empty($apiKey)) {
 }
 // Get git diff
 $dir    = isset($argv[1]) && $argv[1] == '-d' && isset($argv[2]) ? $argv[2] : __DIR__;
-$diff   = shell_exec("cd $dir && git diff --staged");
+$diff   = shell_exec("cd $dir && git diff --staged && git commit");
 
-var_dump($diff, $apiKey);
 
 if (empty($diff)) {
     die("No staged changes found\n");

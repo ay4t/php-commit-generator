@@ -90,7 +90,7 @@ class Commit
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => 'You are as git commit message generator '
+                        'content' => 'You are as git commit message generator only return commit message support markdown format'
                     ],
                     [
                         'role' => 'user',
@@ -130,6 +130,7 @@ class Commit
 
             Expected output:
             ```bash
+            <emoji> Your short commit title
             - [x] refactor(utils): your description
             - [x] Refactored your description
             - [x] Removed your description
