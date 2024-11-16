@@ -14,19 +14,19 @@ class Commit
 
     /**
      * Pesan git diff
-     * @property string
+     * @property $diff_message string
      */
     private string $diff_message;
     
     /**
      * Groq API
-     * @property Groq
+     * @property $groq Groq
      */
     private Groq $groq;
 
     /**
      * Api key untuk mengakses Groq API
-     * @property string
+     * @property $apiKey string
      */
     private string $apiKey;
     
@@ -68,6 +68,128 @@ class Commit
         return $this->generateMessage( $prompt_string );
     }
 
+    private function generateMessage(string $prompt)
+    {
+        try {
+            $response = $this->groq->chat()->completions()->create([
+                'model' => 'mixtral-8x7b-32768',
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => $this->systemPrompt()
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $prompt
+                    ]
+                ],
+                'tools' => [
+                    [
+                        'type' => 'function',
+                        'function' => [
+                            'name' => 'generate_commit',
+                            'description' => 'Generate a standardized git commit message',
+                            'parameters' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'type' => [
+                                        'type' => 'string',
+                                        'enum' => ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore'],
+                                        'description' => 'Type of commit following conventional commits standard'
+                                    ],
+                                    'scope' => [
+                                        'type' => 'string',
+                                        'description' => 'Scope of the commit (optional)'
+                                    ],
+                                    'title' => [
+                                        'type' => 'string',
+                                        'description' => 'Short commit title (50 chars or less)'
+                                    ],
+                                    'description' => [
+                                        'type' => 'array',
+                                        'items' => [
+                                            'type' => 'string'
+                                        ],
+                                        'description' => 'List of changes in bullet points'
+                                    ],
+                                    'breaking_change' => [
+                                        'type' => 'string',
+                                        'description' => 'Description of breaking changes if any'
+                                    ],
+                                    'emoji' => [
+                                        'type' => 'string',
+                                        'description' => 'Relevant emoji for the commit type'
+                                    ]
+                                ],
+                                'required' => ['type', 'title', 'description']
+                            ]
+                        ]
+                    ]
+                ],
+                'tool_choice' => [
+                    'type' => 'function',
+                    'function' => [
+                        'name' => 'generate_commit'
+                    ]
+                ]
+            ]);
+    
+            $toolCalls = $response['choices'][0]['message']['tool_calls'] ?? null;
+            if (!$toolCalls) {
+                throw new \Exception('No tool calls in response');
+            }
+    
+            $commitData = json_decode($toolCalls[0]['function']['arguments'], true);
+            return $this->formatCommitMessage($commitData);
+    
+        } catch (\Exception $e) {
+            throw new \Exception('Groq API Error', 0, $e);
+        }
+    }
+    
+    private function formatCommitMessage(array $data): string
+    {
+        $message = [];
+        
+        // Format title line
+        $title = isset($data['emoji']) ? "{$data['emoji']} " : '';
+        $title .= $data['type'];
+        if (!empty($data['scope'])) {
+            $title .= "({$data['scope']})";
+        }
+        $title .= ": {$data['title']}";
+        $message[] = $title;
+        
+        // Add description points
+        if (!empty($data['description'])) {
+            $message[] = "";  // Empty line after title
+            foreach ($data['description'] as $point) {
+                $message[] = "[x] {$point}";
+            }
+        }
+        
+        // Add breaking change if present
+        if (!empty($data['breaking_change'])) {
+            $message[] = "";  // Empty line before breaking change
+            $message[] = "BREAKING CHANGE: {$data['breaking_change']}";
+        }
+        
+        return implode("\n", $message);
+    }
+    
+    private function systemPrompt(): string
+    {
+        return 'You are a Git commit message generator that analyzes code changes and generates standardized commit messages. 
+        You must use the generate_commit function to format your response.
+        Analyze the git diff carefully and identify:
+        1. The type of change (feat, fix, etc.)
+        2. The scope of the change if applicable
+        3. A concise title that summarizes the change
+        4. Detailed bullet points explaining the changes
+        5. Any breaking changes
+        6. An appropriate emoji for the type of change';
+    }
+
     /**
      * Set git diff
      * @param string $diff_message
@@ -82,29 +204,6 @@ class Commit
      * @param string $prompt
      * @return string
      */
-    private function generateMessage(string $prompt)
-    {
-        try {
-            $response = $this->groq->chat()->completions()->create([
-                'model' => 'mixtral-8x7b-32768',
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'You are as git commit message generator only return commit message support markdown format'
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $prompt
-                    ]
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            throw new \Exception('Groq API Error', 0, $e);
-        }
-
-        return $response['choices'][0]['message']['content'];
-    }
 
     /**
      * Prompt template
@@ -129,11 +228,10 @@ class Commit
             - response in markdown format only
 
             Expected output:
-            ```bash
             <emoji> Your short commit title
-            - [x] refactor(utils): your description
-            - [x] Refactored your description
-            - [x] Removed your description
+            - refactor(utils): your description
+            - Refactored your description
+            - Removed your description
         ';
     }
 

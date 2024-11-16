@@ -12,7 +12,7 @@ if (empty($apiKey)) {
 }
 // Get git diff
 $dir    = isset($argv[1]) && $argv[1] == '-d' && isset($argv[2]) ? $argv[2] : __DIR__;
-$diff   = shell_exec("cd $dir && git diff --staged && git commit");
+$diff   = shell_exec("cd $dir && git diff --staged");
 
 
 if (empty($diff)) {
@@ -24,6 +24,11 @@ try {
     $commit->gitDiff($diff);
     $message = $commit->generate();
     echo $message . "\n";
+
+    // perform git commit with message
+    $commitCmd = "cd $dir && git commit -m '$message'";
+    shell_exec($commitCmd);
+
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
     if ($e->getPrevious()) {
