@@ -27,6 +27,20 @@ composer require ay4t/php-commit-generator
 ## Usage
 
 ### Basic Usage
+You can use the library directly from your workspace using CLI command. But you need to provide GROQ API key first.
+Example:
+```bash
+EXPORT GROQ_API_KEY=your-groq-api-key
+```
+```bash
+php /path/to/generate.php -d /path/to/directory
+```
+or if you working with current directory you can simply 
+```bash
+php /path/to/generate.php -d ./
+```
+
+### Using the Library
 
 ```php
 use Ay4t\PCGG\Commit;
