@@ -72,7 +72,7 @@ class Commit
     {
         try {
             $response = $this->groq->chat()->completions()->create([
-                'model' => 'llama3-groq-70b-8192-tool-use-preview',
+                'model' => 'llama-3.3-70b-versatile',
                 'messages' => [
                     [
                         'role' => 'system',
