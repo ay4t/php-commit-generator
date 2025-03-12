@@ -205,32 +205,52 @@ class Commit
     
     private function formatCommitMessage(array $data): string
     {
-        $message = [];
-        
-        // Format title line
-        $title = isset($data['emoji']) ? "{$data['emoji']} " : '';
-        $title .= $data['type'];
+        // Format title line - hilangkan tanda kutip
+        $title = isset($data['emoji']) ? str_replace('"', '', $data['emoji']) . ' ' : '';
+        $title .= str_replace('"', '', $data['type']);
         if (!empty($data['scope'])) {
-            $title .= "({$data['scope']})";
+            $title .= '(' . str_replace('"', '', $data['scope']) . ')';
         }
-        $title .= ": {$data['title']}";
-        $message[] = $title;
+        $title .= ': ' . str_replace('"', '', $data['title']);
         
-        // Add description points
+        // Bersihkan deskripsi dari karakter yang bisa menyebabkan masalah
+        $description = [];
         if (!empty($data['description'])) {
-            $message[] = "";  // Empty line after title
             foreach ($data['description'] as $point) {
-                $message[] = "[x] {$point}";
+                $cleanPoint = str_replace(
+                    ['"', "'", '`', '[', ']', '(', ')', '{', '}', '*', '\\', '\n', '\r'], 
+                    '', 
+                    $point
+                );
+                $description[] = '- ' . trim($cleanPoint);
             }
         }
         
-        // Add breaking change if present
+        // Format breaking change jika ada
+        $breakingChange = '';
         if (!empty($data['breaking_change'])) {
-            $message[] = "";  // Empty line before breaking change
-            $message[] = "BREAKING CHANGE: {$data['breaking_change']}";
+            $breakingChange = "\n\nBREAKING CHANGE: " . str_replace('"', '', $data['breaking_change']);
         }
         
-        return implode("\n", $message);
+        // Gabungkan semua bagian dengan format yang benar
+        $parts = [];
+        $parts[] = $title;
+        
+        if (!empty($description)) {
+            $parts[] = implode("\n", $description);
+        }
+        
+        if (!empty($breakingChange)) {
+            $parts[] = trim($breakingChange);
+        }
+        
+        // Gabungkan dengan double newline
+        $message = implode("\n\n", array_filter($parts));
+        
+        // Bersihkan karakter kontrol kecuali newline
+        $cleaned = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/u', '', $message);
+        
+        return $cleaned;
     }
     
     private function defaultSystemPrompt(): string
