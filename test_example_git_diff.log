@@ -1,0 +1,494 @@
+diff --git a/app/Views/dashboard/activation/packages.php b/app/Views/dashboard/activation/packages.php
+index 954f70f..7b1d9ff 100644
+--- a/app/Views/dashboard/activation/packages.php
++++ b/app/Views/dashboard/activation/packages.php
+@@ -8,113 +8,135 @@
+ 
+ <?= (!$is_ajax_request) ? $this->section('content') : '' ?>
+ 
+-<div class="row">
+-    <?php foreach ($master_packages as $row) : ?>
+-        <div class="col-lg-3">
+-            <div class="card">
+-                <div class="card-body">
+-                    <div class="pricingTable1 text-center">
+-                        <img src="assets/images/widgets/p-1.png" alt="" class="" height="120">
+-                        <h6 class="title1 py-3 mt-2 mb-0">
+-                            <?= $row->package_name ;?>
+-                            <!-- <small class="text-muted font-12">Per Month</small> -->
+-                        </h6>
+-                        <ul class="list-unstyled pricing-content-2">
+-                            <li>Pembagian Sponsor / Referral 10 %</li>
+-                            <li>Pembagian Pairing 5%</li>
+-                            <li>Mengikuti Program Reward</li>
+-                            <li>Bonus Repeat Order</li>
+-                            <!-- <li>10 Domains</li> -->
+-                        </ul>
+-                        <hr class="hr-dashed my-4">
+-                        <div class="text-center">
+-                            <h3 class="amount"><?= FormatCurrency($row->package_price_start) ;?></h3>
+-                        </div>
+-                        <a href="javascript:" class="btn btn-primary w-100 btn-skew btn-outline-dashed py-2" onclick="showModal($(this), '<?= $row->package_id ?>')">
+-                            <span>AKTIVASI R.O</span>
+-                        </a>
+-                    </div><!--end pricingTable-->
+-                </div><!--end card-body-->
+-            </div> <!--end card-->
++<div class="container">
++    <!-- Filter Paket -->
++    <div class="package-filter mb-3">
++        <div class="input-group">
++            <span class="input-group-text bg-white border-end-0">
++                <i data-lucide="search" class="text-muted" style="width: 16px; height: 16px;"></i>
++            </span>
++            <input type="text" class="form-control border-start-0 ps-0" id="packageSearch" placeholder="Cari paket...">
+         </div>
+-    <?php endforeach ?>
+-</div><!--end row-->
+-
+-<div class="row">
+-    <div class="col-md-12">
+-        <div class="card">
+-            <div class="card-header bg-dark">
+-                <h4 class="card-title text-white">Histori Aktivasi RO</h4>
++    </div>
++
++    <!-- Paket Aktivasi -->
++    <div class="row g-2" id="packageList">
++        <?php foreach ($master_packages as $row) : ?>
++        <div class="col-12 package-item" data-name="<?= strtolower($row->package_name) ?>">
++            <div class="card package-card border-0 rounded-4 shadow-sm">
++                <div class="card-body p-0">
++                    <div class="d-flex align-items-center">
++                        <!-- Package Icon -->
++                        <div class="package-icon rounded-start-4 bg-primary bg-opacity-10 p-3 d-flex align-items-center justify-content-center" style="width: 100px; height: 100%;">
++                            <i data-lucide="package" class="text-primary" style="width: 32px; height: 32px;"></i>
++                        </div>
++                        
++                        <!-- Package Info -->
++                        <div class="package-info p-3 flex-grow-1">
++                            <h5 class="package-name mb-1"><?= $row->package_name ;?></h5>
++                            <div class="package-price text-primary fw-bold mb-2">
++                                <?= FormatCurrency($row->package_price_start) ;?>
++                            </div>
++                            <div class="package-features small text-muted">
++                                <div><i data-lucide="check" class="text-success" style="width: 14px; height: 14px;"></i> Sponsor 10%</div>
++                                <div><i data-lucide="check" class="text-success" style="width: 14px; height: 14px;"></i> Pairing 5%</div>
++                                <div><i data-lucide="check" class="text-success" style="width: 14px; height: 14px;"></i> Program Reward</div>
++                                <div><i data-lucide="check" class="text-success" style="width: 14px; height: 14px;"></i> Bonus RO</div>
++                            </div>
++                        </div>
++
++                        <!-- Action Button -->
++                        <div class="package-action p-3">
++                            <button class="btn btn-primary btn-sm rounded-pill px-3" onclick="showModal($(this), '<?= $row->package_id ?>')">
++                                <span>Aktivasi</span>
++                            </button>
++                        </div>
++                    </div>
++                </div>
+             </div>
+-            <div class="card-body">
+-                <table class="table table-hover table-striped" id="datatables">
+-                    <thead>
+-                        <tr>
+-                            <th>No</th>
+-                            <th style="width: 250px;">Tanggal Aktivasi</th>
+-                            <th>Kode Serial</th>
+-                            <th>Status Proses</th>
+-                        </tr>
+-                    </thead>
+-                    <tbody></tbody>
+-                </table>
++        </div>
++        <?php endforeach ?>
++    </div>
++
++    <!-- Riwayat Aktivasi -->
++    <div class="history-section mt-4">
++        <div class="d-flex align-items-center justify-content-between mb-3">
++            <h5 class="mb-0">Riwayat Aktivasi</h5>
++            <div class="history-filter d-flex gap-2">
++                <div class="input-group input-group-sm">
++                    <span class="input-group-text bg-white border-end-0">
++                        <i data-lucide="calendar" class="text-muted" style="width: 14px; height: 14px;"></i>
++                    </span>
++                    <select class="form-select border-start-0 ps-0" id="historyFilter">
++                        <option value="7">7 Hari</option>
++                        <option value="30">30 Hari</option>
++                        <option value="all">Semua</option>
++                    </select>
++                </div>
++                <button class="btn btn-sm btn-light" id="refreshHistory">
++                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
++                </button>
+             </div>
+         </div>
++
++        <div class="table-responsive">
++            <table class="table table-hover" id="datatables">
++                <thead class="table-light">
++                    <tr>
++                        <th class="text-center" style="width: 50px;">No</th>
++                        <th>Tanggal</th>
++                        <th>Serial</th>
++                        <th class="text-center">Status</th>
++                    </tr>
++                </thead>
++                <tbody></tbody>
++            </table>
++        </div>
+     </div>
+ </div>
+ 
++<!-- Modal Aktivasi -->
+ <form action="<?= route_to('dashboard.activation.packages.activate-ro') ?>" class="modal fade" id="modal_activation_ro" data-bs-backdrop="static" data-bs-keyboard="false" role="dialog" aria-labelledby="modalTitleId" aria-hidden="true">
+     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg" role="document">
+-        <div class="modal-content">
+-            <div class="modal-header">
+-                <h5 class="modal-title" id="modalTitleId">
+-                    <i data-lucide="check-circle" class="text-primary"></i>
+-                    Aktivasi Repeat Order
++        <div class="modal-content rounded-4 border-0">
++            <div class="modal-header border-0 pb-0">
++                <h5 class="modal-title d-flex align-items-center gap-2" id="modalTitleId">
++                    <i data-lucide="package-check" class="text-primary"></i>
++                    Aktivasi RO
+                 </h5>
+                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+             </div>
+-            <div class="modal-body p-0">
+-
+-                <div class="alert alert-primary d-flex align-items-center" role="alert">
+-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+-                        class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2" viewBox="0 0 16 16" role="img" aria-label="Warning:">
+-                        <path
+-                            d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" />
+-                    </svg>
+-                    <div>
+-                        Jika Anda memiliki serial aktivasi dengan jenis repeat order dan masih tersedia, akan muncul di bawah ini. Anda
+-                        dapat memilih salah satu atau beberapa serial sekaligus untuk menjalankan aktivasi RO secara massal.
++            <div class="modal-body">
++                <div class="alert alert-info d-flex gap-2 align-items-start rounded-3 mb-3">
++                    <i data-lucide="info" style="width: 18px; height: 18px;"></i>
++                    <div class="small">
++                        Pilih serial yang tersedia untuk aktivasi RO. Anda dapat memilih beberapa serial sekaligus.
+                     </div>
+                 </div>
+                 
+                 <div class="table-responsive">
+-                    <table class="table table-bordered" id="table_serial">
+-                        <thead>
++                    <table class="table table-hover" id="table_serial">
++                        <thead class="table-light">
+                             <tr>
+-                                <th>Pilih</th>
+-                                <th style="min-width: 400px;">Kode Serial</th>
+-                                <th style="min-width: 150px;">Jenis Paket</th>
+-                                <th style="min-width: 150px;">Pengirim</th>
++                                <th class="text-center" style="width: 50px;">
++                                    <div class="form-check">
++                                        <input type="checkbox" class="form-check-input" id="checkAll">
++                                    </div>
++                                </th>
++                                <th>Serial</th>
++                                <th>Paket</th>
++                                <th>Pengirim</th>
+                             </tr>
+                         </thead>
+                         <tbody></tbody>
+                     </table>
+                 </div>
+-
+             </div>
+-            <div class="modal-footer">
+-
+-                <button type="button" class="btn btn-success" onclick="toggleCheckAll()" style="display: none;">
+-                    <i class="mdi mdi-check"></i>
+-                    Pilih Semua
+-                </button>
++            <div class="modal-footer border-0 pt-0">
++                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                 <button type="submit" class="btn btn-primary" style="display: none;">
+-                    <i class="mdi mdi-cogs"></i>
+-                    Proses
+-                </button>
+-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+-                    <i class="mdi mdi-cancel"></i>
+-                    Batal
++                    <i data-lucide="check" style="width: 18px; height: 18px;"></i>
++                    Proses Aktivasi
+                 </button>
+             </div>
+         </div>
+@@ -125,7 +147,6 @@
+ 
+ <?= (!$is_ajax_request) ? $this->endSection() : '' ?>
+ 
+-
+ <?= (!$is_ajax_request) ? $this->section("js_footer") : '' ?>
+ 
+ <link rel="stylesheet" href="/node_modules/datatables.net-bs5/css/dataTables.bootstrap5.min.css">
+@@ -133,115 +154,190 @@
+ <script src="/node_modules/datatables.net-bs5/js/dataTables.bootstrap5.min.js"></script>
+ 
+ <script type="text/javascript">
+-    function toggleCheckAll() {
+-        // select all checkboxes in the tbody element of the table
+-        const checkboxes = $('#table_serial tbody input[type=checkbox]');
++    // Filter paket
++    $('#packageSearch').on('input', function() {
++        const query = $(this).val().toLowerCase();
++        $('.package-item').each(function() {
++            const name = $(this).data('name');
++            $(this).toggle(name.includes(query));
++        });
++    });
+ 
+-        // change the checked property of all checkboxes based on the current value of the first checkbox
+-        checkboxes.prop('checked', checkboxes.first().prop('checked'));
++    // Refresh history
++    $('#refreshHistory').on('click', function() {
++        const btn = $(this);
++        const icon = btn.find('i');
++        
++        // Animasi refresh
++        icon.addClass('spin');
++        $('#datatables').DataTable().ajax.reload(function() {
++            icon.removeClass('spin');
++        });
++    });
+ 
+-        // trigger click event for all checkboxes
+-        checkboxes.trigger('click');
+-    }
++    // Filter history berdasarkan tanggal
++    $('#historyFilter').on('change', function() {
++        $('#datatables').DataTable().ajax.reload();
++    });
+ 
++    // Toggle semua checkbox
++    $('#checkAll').on('change', function() {
++        const isChecked = $(this).prop('checked');
++        const checkboxes = $('#table_serial tbody input[type=checkbox]');
++        
++        checkboxes.prop('checked', isChecked);
++        checkboxes.each(function() {
++            if (isChecked) {
++                $(this).attr('name', 'selected_ids[]');
++            } else {
++                $(this).removeAttr('name');
++            }
++        });
++        
++        // Toggle tombol submit
++        $('.modal-footer button[type=submit]').toggle(isChecked && checkboxes.length > 0);
++    });
+ 
+-    function showModal( selector_button, package_id ){
++    // Tampilkan modal aktivasi
++    function showModal(selector_button, package_id) {
+         const modal = $('#modal_activation_ro');
+-        // select the table body element
+         const tbody = document.querySelector('#table_serial tbody');
+         const l = Ladda.create(selector_button.get(0));
+ 
+-        /* modal button[type=submit] menjadi hide */
+         modal.find('button[type=submit]').hide();
+-
+-        /* tulis kedalam modal body package_id */
+         modal.find('input[name=package_id]').val(package_id);
++        $('#checkAll').prop('checked', false);
+ 
+         l.start();
+ 
+         $.get("<?= route_to('dashboard.activation.packages.serial-lists'); ?>", {
+-            filter: [
+-                "<?= 'userial_user_id,eq,' . $userdata->id; ?>"
+-            ],
++            filter: ["<?= 'userial_user_id,eq,' . $userdata->id; ?>"],
+             package_id: package_id
+-        },function (response, textStatus, jqXHR) {
+-
+-            // show/hide the "Pilih Semua" button based on the response from the AJAX request
+-            if (response.result.length > 0) {
+-                $('.modal-footer .btn-success').show();
+-            } else {
+-                $('.modal-footer .btn-success').hide();
+-            }
+-
+-
+-             // create a new variable to hold the table rows
++        }, function(response) {
+             let rows = '';
+ 
+-            // loop through the data and create a table row for each item
+-            response.result.forEach(item => {
+-                rows += `<tr>
+-                            <td><input type="checkbox" class="serial-checkbox" value="${item.userial_id}"></td>
+-                            <td>${item.serial_code}</td>
++            if (response.result.length > 0) {
++                response.result.forEach(item => {
++                    rows += `
++                        <tr>
++                            <td class="text-center">
++                                <div class="form-check">
++                                    <input type="checkbox" class="form-check-input serial-checkbox" value="${item.userial_id}">
++                                </div>
++                            </td>
++                            <td>
++                                <div class="fw-medium">${item.serial_code}</div>
++                            </td>
+                             <td>${item.package_name}</td>
+                             <td>${item.username}</td>
+-                        </tr>`;
+-            });
+-
+-            /* jika response.result kosong maka tampilkan pesan kosong */
+-            if(response.result.length == 0){
+-                rows = '<tr><td colspan="4" class="text-left"> <div class="alert alert-danger" role="alert"><strong>Anda belum mempunyai serial yang dapat digunakan !</strong></div> </td></tr>';
++                        </tr>
++                    `;
++                });
++            } else {
++                rows = `
++                    <tr>
++                        <td colspan="4" class="text-center py-4">
++                            <div class="text-muted">
++                                <i data-lucide="package-x" style="width: 48px; height: 48px;"></i>
++                                <div class="mt-2">Tidak ada serial tersedia</div>
++                            </div>
++                        </td>
++                    </tr>
++                `;
+             }
+ 
+-            // set the innerHTML of the table body to the new rows
+             tbody.innerHTML = rows;
+-
+-            // show the modal
+             modal.modal('show');
+             l.stop();
++            lucide.createIcons();
+ 
+-            // add click event listener to each checkbox
+-            $('.serial-checkbox').on('click', function() {
+-                // get all checked checkboxes
+-                const checkedCheckboxes = $('.serial-checkbox:checked');
+-                // check if any checkboxes are checked
+-                if (checkedCheckboxes.length > 0) {
+-                    // toggle the display property of the submit button
+-                    $('.modal-footer button[type=submit]').show();
+-                } else {
+-                    // hide the submit button if no checkboxes are checked
+-                    $('.modal-footer button[type=submit]').hide();
+-                }
+-
+-                // toggle the name attribute based on whether the checkbox is checked or not
++            // Handle checkbox events
++            $('.serial-checkbox').on('change', function() {
++                const checkedCount = $('.serial-checkbox:checked').length;
++                const totalCheckboxes = $('.serial-checkbox').length;
++                
++                $('#checkAll').prop('checked', checkedCount === totalCheckboxes);
++                
+                 if (this.checked) {
+                     $(this).attr('name', 'selected_ids[]');
+                 } else {
+                     $(this).removeAttr('name');
+                 }
++                
++                $('.modal-footer button[type=submit]').toggle(checkedCount > 0);
+             });
+-
+-        }, "json");
++        });
+     }
+ 
+-    $(document).ready(function () {
+-        let form_modal_activation_ro = $('#modal_activation_ro');
+-        app.handleFormSubmit(form_modal_activation_ro, function(response){
+-            if(response.status) { 
+-                $('#modal_activation_ro').modal('hide');
++    // Inisialisasi DataTables
++    $(document).ready(function() {
++        const form_modal = $('#modal_activation_ro');
++        
++        app.handleFormSubmit(form_modal, function(response) {
++            if (response.status) {
++                form_modal.modal('hide');
+             }
+         });
+ 
+-        app.initDatatables($( $('#datatables') ), {
+-            "ajax": {
+-                "url": "<?= $datatables_path; ?>",
+-                "type": "GET"
+-            },
+-            "drawCallback": function(data) {
+-                /* custom callback here */
++        app.initDatatables($('#datatables'), {
++            ajax: {
++                url: "<?= $datatables_path; ?>",
++                type: "GET",
++                data: function(d) {
++                    d.days = $('#historyFilter').val();
++                }
+             },
+-            "order": [[1, 'DESC']]
++            order: [[1, 'DESC']],
++            columns: [
++                { data: 'rn', className: 'text-center' },
++                { data: 'ar_date_created' },
++                { data: 'serial_code' },
++                { 
++                    data: 'ar_processed',
++                    className: 'text-center',
++                    render: function(data) {
++                        if (data === '1') {
++                            return '<span class="badge bg-success rounded-pill">Diproses</span>';
++                        }
++                        return '<span class="badge bg-secondary rounded-pill">Pending</span>';
++                    }
++                }
++            ]
+         });
+     });
+-
+ </script>
++
++<style>
++.package-card {
++    transition: all 0.2s ease-in-out;
++}
++.package-card:hover {
++    transform: translateY(-2px);
++    box-shadow: 0 .5rem 1rem rgba(0,0,0,.08) !important;
++}
++.package-features {
++    display: grid;
++    grid-template-columns: repeat(2, 1fr);
++    gap: 4px;
++}
++@media (max-width: 576px) {
++    .package-icon {
++        width: 80px !important;
++    }
++    .package-features {
++        grid-template-columns: 1fr;
++    }
++    .package-action {
++        padding: 1rem !important;
++    }
++}
++@keyframes spin {
++    from { transform: rotate(0deg); }
++    to { transform: rotate(360deg); }
++}
++.spin {
++    animation: spin 1s linear infinite;
++}
++</style>
++
+ <?= (!$is_ajax_request) ? $this->endSection() : '' ?>
+\ No newline at end of file

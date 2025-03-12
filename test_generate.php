@@ -5,23 +5,25 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Ay4t\PCGG\Commit;
 use Dotenv\Dotenv;
 
-//load environment variables
+// Load environment variables
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-// Get the API key from environment variable
+// Get API key
 $apiKey = getenv('GEMINI_API_KEY');
-
 if (empty($apiKey)) {
     die("Please set GEMINI_API_KEY environment variable\n");
 }
 
-// Get git diff
-$dir    = isset($argv[1]) && $argv[1] == '-d' && isset($argv[2]) ? $argv[2] : __DIR__;
-$diff   = shell_exec("cd $dir && git diff --staged");
+// Baca file git diff
+$diffFile = __DIR__ . '/test_example_git_diff.log';
+if (!file_exists($diffFile)) {
+    die("File test_example_git_diff.log tidak ditemukan\n");
+}
 
+$diff = file_get_contents($diffFile);
 if (empty($diff)) {
-    die("No staged changes found\n");
+    die("File git diff kosong\n");
 }
 
 try {
@@ -31,17 +33,23 @@ try {
         'model' => 'gemini-2.0-flash-exp'
     ];
 
+    echo "=== Memulai Testing Generate Commit Message ===\n";
+    echo "Menggunakan file: " . $diffFile . "\n";
+    echo "Panjang diff: " . strlen($diff) . " karakter\n\n";
+
     $commit = new Commit($apiKey, '', $config);
     $commit->gitDiff($diff);
+    
+    echo "Mencoba generate commit message...\n";
     $message = $commit->generate();
+    
+    echo "\nHasil generate commit message:\n";
+    echo "-----------------------------\n";
     echo $message . "\n";
-
-    // perform git commit with message
-    $commitCmd = "cd $dir && git commit -m '$message'";
-    shell_exec($commitCmd);
+    echo "-----------------------------\n";
 
 } catch (Exception $e) {
-    echo "Error: " . $e->getMessage() . "\n";
+    echo "\nError: " . $e->getMessage() . "\n";
     if ($e->getPrevious()) {
         echo "Caused by: " . $e->getPrevious()->getMessage() . "\n";
     }

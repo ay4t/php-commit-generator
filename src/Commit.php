@@ -2,53 +2,94 @@
 
 namespace Ay4t\PCGG;
 
-use LucianoTonet\GroqPHP\Groq;
-
 /**
  * Class Commit
- * Used to generate automatic commit messages with AI powered by Groq API
+ * Used to generate automatic commit messages with AI powered by LLM API
  */
-
 class Commit
 {
-
     /**
      * Pesan git diff
      * @property $diff_message string
      */
-    private string $diff_message;
-    
-    /**
-     * Groq API
-     * @property $groq Groq
-     */
-    private Groq $groq;
+    private string $diff_message = '';
 
     /**
-     * Api key untuk mengakses Groq API
+     * API Key untuk mengakses LLM API
      * @property $apiKey string
      */
-    private string $apiKey;
-    
+    private string $apiKey = '';
+
+    /**
+     * API Endpoint untuk LLM
+     * @property $apiEndpoint string
+     */
+    private string $apiEndpoint = 'https://api.groq.com/v1/chat/completions';
+
+    /**
+     * Model yang akan digunakan
+     * @property $model string
+     */
+    private string $model = 'llama-3.3-70b-versatile';
+
+    /**
+     * System prompt untuk LLM
+     * @property $systemPrompt string
+     */
+    private string $systemPrompt;
+
     /**
      * Constructor
      * @param string $apiKey
      * @param string $diff_message
+     * @param array $config Konfigurasi tambahan (endpoint, model, systemPrompt)
      */
-    public function __construct(string $apiKey = '', string $diff_message = '')
+    public function __construct(string $apiKey = '', string $diff_message = '', array $config = [])
     {
-        $this->apiKey           = $apiKey;
-        $this->diff_message     = $diff_message;
-        $this->groq             = new Groq( $this->apiKey );
+        $this->apiKey = $apiKey;
+        $this->diff_message = $diff_message;
+        $this->systemPrompt = $this->defaultSystemPrompt();
+
+        // Set konfigurasi tambahan jika ada
+        if (isset($config['endpoint'])) $this->apiEndpoint = $config['endpoint'];
+        if (isset($config['model'])) $this->model = $config['model'];
+        if (isset($config['systemPrompt'])) $this->systemPrompt = $config['systemPrompt'];
     }
 
     /**
      * Set api key
      * @param string $apiKey
      */
-    public function setApiKey( string $apiKey ) 
+    public function setApiKey(string $apiKey)
     {
         $this->apiKey = $apiKey;
+    }
+
+    /**
+     * Set API endpoint
+     * @param string $endpoint
+     */
+    public function setEndpoint(string $endpoint)
+    {
+        $this->apiEndpoint = $endpoint;
+    }
+
+    /**
+     * Set model
+     * @param string $model
+     */
+    public function setModel(string $model)
+    {
+        $this->model = $model;
+    }
+
+    /**
+     * Set system prompt
+     * @param string $prompt
+     */
+    public function setSystemPrompt(string $prompt)
+    {
+        $this->systemPrompt = $prompt;
     }
 
     /**
@@ -71,79 +112,94 @@ class Commit
     private function generateMessage(string $prompt)
     {
         try {
-            $response = $this->groq->chat()->completions()->create([
-                'model' => 'llama-3.3-70b-versatile',
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => $this->systemPrompt()
-                    ],
+            // Menyiapkan payload untuk Gemini API dengan format yang lebih sederhana
+            $payload = [
+                'contents' => [
                     [
                         'role' => 'user',
-                        'content' => $prompt
-                    ]
-                ],
-                'tools' => [
-                    [
-                        'type' => 'function',
-                        'function' => [
-                            'name' => 'generate_commit',
-                            'description' => 'Generate a standardized git commit message',
-                            'parameters' => [
-                                'type' => 'object',
-                                'properties' => [
-                                    'type' => [
-                                        'type' => 'string',
-                                        'enum' => ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore'],
-                                        'description' => 'Type of commit following conventional commits standard'
-                                    ],
-                                    'scope' => [
-                                        'type' => 'string',
-                                        'description' => 'Scope of the commit (optional)'
-                                    ],
-                                    'title' => [
-                                        'type' => 'string',
-                                        'description' => 'Short commit title (50 chars or less)'
-                                    ],
-                                    'description' => [
-                                        'type' => 'array',
-                                        'items' => [
-                                            'type' => 'string'
-                                        ],
-                                        'description' => 'List of changes in bullet points'
-                                    ],
-                                    'breaking_change' => [
-                                        'type' => 'string',
-                                        'description' => 'Description of breaking changes if any'
-                                    ],
-                                    'emoji' => [
-                                        'type' => 'string',
-                                        'description' => 'Relevant emoji for the commit type'
-                                    ]
-                                ],
-                                'required' => ['type', 'title', 'description']
+                        'parts' => [
+                            [
+                                'text' => "Anda adalah Git commit message generator yang menganalisis perubahan kode dan menghasilkan pesan commit yang terstandarisasi.\n\n" .
+                                         "### Berikut adalah output `git diff`:\n" . 
+                                         $this->diff_message . "\n\n" .
+                                         "Berikan pesan commit dalam format JSON berikut:\n" .
+                                         "{\n" .
+                                         "  \"type\": \"feat/fix/docs/style/refactor/test/chore\",\n" .
+                                         "  \"title\": \"judul singkat (max 50 karakter)\",\n" .
+                                         "  \"description\": [\"poin perubahan 1\", \"poin perubahan 2\"],\n" .
+                                         "  \"emoji\": \"emoji yang sesuai\"\n" .
+                                         "}\n\n" .
+                                         "Pastikan response dalam format JSON yang valid."
                             ]
                         ]
                     ]
-                ],
-                'tool_choice' => [
-                    'type' => 'function',
-                    'function' => [
-                        'name' => 'generate_commit'
-                    ]
                 ]
+            ];
+
+            // Membangun URL endpoint
+            $url = rtrim($this->apiEndpoint, '/') . '/models/' . $this->model . ':generateContent?key=' . $this->apiKey;
+            
+            // Debug: tampilkan URL dan payload
+            /* echo "\nURL Request: " . $url . "\n";
+            echo "\nPayload:\n" . json_encode($payload, JSON_PRETTY_PRINT) . "\n"; */
+            
+            // Melakukan request ke Gemini API
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_POSTFIELDS => json_encode($payload)
             ]);
-    
-            $toolCalls = $response['choices'][0]['message']['tool_calls'] ?? null;
-            if (!$toolCalls) {
-                throw new \Exception('No tool calls in response');
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            // Debug: tampilkan response mentah
+            /* echo "\nHTTP Code: " . $httpCode . "\n";
+            echo "\nResponse Raw:\n" . $response . "\n"; */
+
+            if ($httpCode !== 200) {
+                throw new \Exception('API Error: HTTP ' . $httpCode . ' - ' . $response);
             }
-    
-            $commitData = json_decode($toolCalls[0]['function']['arguments'], true);
+
+            $responseData = json_decode($response, true);
+            if (!$responseData) {
+                throw new \Exception('Invalid JSON response');
+            }
+
+            // Debug: tampilkan response yang sudah di-decode
+            /* echo "\nResponse Decoded:\n" . json_encode($responseData, JSON_PRETTY_PRINT) . "\n"; */
+
+            // Parse response dari Gemini API
+            $text = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            if (empty($text)) {
+                throw new \Exception('Response kosong dari API');
+            }
+
+            // Ekstrak JSON dari response text
+            preg_match('/\{.*\}/s', $text, $matches);
+            if (empty($matches[0])) {
+                throw new \Exception('Tidak ditemukan format JSON dalam response');
+            }
+
+            $commitData = json_decode($matches[0], true);
+            if (!$commitData) {
+                throw new \Exception('Format JSON tidak valid dalam response');
+            }
+
+            // Validasi data commit
+            if (!isset($commitData['type']) || !isset($commitData['title']) || !isset($commitData['description'])) {
+                throw new \Exception('Data commit tidak lengkap');
+            }
+
             return $this->formatCommitMessage($commitData);
-    
+
         } catch (\Exception $e) {
-            throw new \Exception('Groq API Error', 0, $e);
+            throw new \Exception('LLM API Error: ' . $e->getMessage());
         }
     }
     
@@ -177,7 +233,7 @@ class Commit
         return implode("\n", $message);
     }
     
-    private function systemPrompt(): string
+    private function defaultSystemPrompt(): string
     {
         return 'You are a Git commit message generator that analyzes code changes and generates standardized commit messages. 
         You must use the generate_commit function to format your response.
@@ -213,25 +269,25 @@ class Commit
     {
         return '
             Generate a concise, standardized Git commit message based on the provided data above changes. Follow these guidelines:
-            - Use the Conventional Commits standard:
-            - `feat`: for a new feature
-            - `fix`: for a bug fix
-            - `docs`: for documentation updates
-            - `style`: for code formatting or style updates (non-functional changes)
-            - `refactor`: for code refactoring (non-functional)
-            - `test`: for adding or updating tests
-            - `chore`: for maintenance tasks
-            - Summarize the commit in 50 characters or less for the first line.
-            - Optionally, add further details in subsequent lines to clarify the changes if needed.
-            - For breaking changes, include a `BREAKING CHANGE:` note with a brief description of the impact.
-            - Provide only the commit message, formatted to be ready for Git.
-            - response in markdown format only
+            1. Use the Conventional Commits standard:
+            * `feat`: for a new feature
+            * `fix`: for a bug fix
+            * `docs`: for documentation updates
+            * `style`: for code formatting or style updates (non-functional changes)
+            * `refactor`: for code refactoring (non-functional)
+            * `test`: for adding or updating tests
+            * `chore`: for maintenance tasks
+            2. Summarize the commit in 50 characters or less for the first line.
+            3. Optionally, add further details in subsequent lines to clarify the changes if needed.
+            4. For breaking changes, include a `BREAKING CHANGE:` note with a brief description of the impact.
+            5. Provide only the commit message, formatted to be ready for Git.
+            6. response in markdown format only
 
             Expected output:
             <emoji> Your short commit title
-            - refactor(utils): your description
-            - Refactored your description
-            - Removed your description
+            - [x] refactor(utils): your description
+            - [x] Refactored your description
+            - [x] Removed your description
         ';
     }
 
