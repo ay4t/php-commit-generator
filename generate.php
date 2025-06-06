@@ -10,7 +10,7 @@ $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
 // Get the API key from environment variable
-$apiKey = getenv('GEMINI_API_KEY');
+$apiKey = $_SERVER['GEMINI_API_KEY'];
 
 if (empty($apiKey)) {
     die("Please set GEMINI_API_KEY environment variable\n");
@@ -30,6 +30,11 @@ try {
         'endpoint' => 'https://generativelanguage.googleapis.com/v1beta',
         'model' => 'gemini-2.0-flash-exp'
     ];
+    
+    /* $config = [
+        'endpoint' => 'http://localhost:8081/api',
+        'model' => 'ai-commit-message-generator'
+    ]; */
 
     $commit = new Commit($apiKey, '', $config);
     $commit->gitDiff($diff);

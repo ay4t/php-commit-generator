@@ -101,7 +101,7 @@ class Commit
         /* validation */
         $this->validation();
 
-        $prompt[] = '### Here is the `git diff` output:';
+        $prompt[] = '### Berikut adalah perubahan kode dari git diff:';
         $prompt[] = $this->diff_message;
         $prompt[] = $this->promptTemplate();
 
@@ -138,29 +138,20 @@ class Commit
 
             // Membangun URL endpoint
             $url = rtrim($this->apiEndpoint, '/') . '/models/' . $this->model . ':generateContent?key=' . $this->apiKey;
+                        
+            // Inisialisasi Guzzle HTTP Client
+            $client = new \GuzzleHttp\Client();
             
-            // Debug: tampilkan URL dan payload
-            /* echo "\nURL Request: " . $url . "\n";
-            echo "\nPayload:\n" . json_encode($payload, JSON_PRETTY_PRINT) . "\n"; */
-            
-            // Melakukan request ke Gemini API
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST => true,
-                CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/json'
+            // Melakukan request ke Gemini API menggunakan Guzzle
+            $guzzleResponse = $client->post($url, [
+                'headers' => [
+                    'Content-Type' => 'application/json'
                 ],
-                CURLOPT_POSTFIELDS => json_encode($payload)
+                'json' => $payload
             ]);
 
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            // Debug: tampilkan response mentah
-            /* echo "\nHTTP Code: " . $httpCode . "\n";
-            echo "\nResponse Raw:\n" . $response . "\n"; */
+            $response = $guzzleResponse->getBody()->getContents();
+            $httpCode = $guzzleResponse->getStatusCode();
 
             if ($httpCode !== 200) {
                 throw new \Exception('API Error: HTTP ' . $httpCode . ' - ' . $response);
@@ -170,9 +161,6 @@ class Commit
             if (!$responseData) {
                 throw new \Exception('Invalid JSON response');
             }
-
-            // Debug: tampilkan response yang sudah di-decode
-            /* echo "\nResponse Decoded:\n" . json_encode($responseData, JSON_PRETTY_PRINT) . "\n"; */
 
             // Parse response dari Gemini API
             $text = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
@@ -255,15 +243,15 @@ class Commit
     
     private function defaultSystemPrompt(): string
     {
-        return 'You are a Git commit message generator that analyzes code changes and generates standardized commit messages. 
-        You must use the generate_commit function to format your response.
-        Analyze the git diff carefully and identify:
-        1. The type of change (feat, fix, etc.)
-        2. The scope of the change if applicable
-        3. A concise title that summarizes the change
-        4. Detailed bullet points explaining the changes
-        5. Any breaking changes
-        6. An appropriate emoji for the type of change';
+        return 'Anda adalah generator pesan commit Git yang menganalisis perubahan kode dan menghasilkan pesan commit yang distandarisasi. 
+        Anda harus menggunakan fungsi generate_commit untuk memformat respon Anda.
+        Analisis perbedaan git dengan cermat dan identifikasi:
+        1. Jenis perubahan (feat, fix, dll.)
+        2. Ruang lingkup perubahan jika berlaku
+        3. Judul yang singkat dan ringkas yang merangkum perubahan
+        4. Poin-poin detail yang menjelaskan perubahan
+        5. Perubahan yang merusak
+        6. Emoji yang sesuai untuk jenis perubahan';
     }
 
     /**
@@ -276,12 +264,6 @@ class Commit
     }
     
     /**
-     * Generate commit message
-     * @param string $prompt
-     * @return string
-     */
-
-    /**
      * Prompt template
      * @return string
      */
@@ -289,25 +271,25 @@ class Commit
     {
         return '
             Generate a concise, standardized Git commit message based on the provided data above changes. Follow these guidelines:
-            1. Use the Conventional Commits standard:
-            * `feat`: for a new feature
-            * `fix`: for a bug fix
-            * `docs`: for documentation updates
-            * `style`: for code formatting or style updates (non-functional changes)
-            * `refactor`: for code refactoring (non-functional)
-            * `test`: for adding or updating tests
-            * `chore`: for maintenance tasks
-            2. Summarize the commit in 50 characters or less for the first line.
-            3. Optionally, add further details in subsequent lines to clarify the changes if needed.
-            4. For breaking changes, include a `BREAKING CHANGE:` note with a brief description of the impact.
-            5. Provide only the commit message, formatted to be ready for Git.
-            6. response in markdown format only
+            1. Gunakan Conventional Commits standard:
+            * `feat`: untuk fitur baru
+            * `fix`: untuk perbaikan bug
+            * `docs`: untuk update dokumentasi
+            * `style`: untuk update kode formatting atau style (perubahan non-fungsional)
+            * `refactor`: untuk refactor kode (perubahan non-fungsional)
+            * `test`: untuk menambahkan atau memperbarui test
+            * `chore`: untuk tugas maintenance
+            2. Ringkaskan commit dalam 50 karakter atau kurang untuk baris pertama.
+            3. Secara opsional, tambahkan detail lebih lanjut dalam baris-baris berikut untuk menjelaskan perubahan jika diperlukan.
+            4. Untuk perubahan yang merusak, include catatan `BREAKING CHANGE:` dengan deskripsi singkat tentang dampaknya.
+            5. Berikan hanya pesan commit, diformat agar siap untuk Git.
+            6. Respons dalam format markdown saja
 
-            Expected output:
-            <emoji> Your short commit title
-            - [x] refactor(utils): your description
-            - [x] Refactored your description
-            - [x] Removed your description
+            Output yang diharapkan:
+            <emoji> Judul commit Anda yang singkat
+            - [x] refactor(utils): deskripsi Anda
+            - [x] Menulis ulang deskripsi Anda
+            - [x] Menghapus deskripsi Anda
         ';
     }
 

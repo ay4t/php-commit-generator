@@ -1,22 +1,10 @@
 {
     "name": "ay4t/php-commit-generator",
     "type": "library",
-    "require": {
-        "lucianotonet/groq-php": "dev-main",
-        "vlucas/phpdotenv": "^5.6@dev"
-    },
-    "require-dev": {
-        "phpunit/phpunit": "^12.0@dev"
-    },
     "license": "MIT",
     "autoload": {
         "psr-4": {
             "Ay4t\\PCGG\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Ay4t\\PCGG\\Tests\\": "tests/"
         }
     },
     "authors": [
@@ -25,5 +13,11 @@
             "email": "kawoel@gmail.com"
         }
     ],
-    "minimum-stability": "dev"
+    "require": {
+        "vlucas/phpdotenv": "^5.6",
+        "guzzlehttp/guzzle": "^7.9"
+    },
+    "require-dev": {
+        "kint-php/kint": "^6.0"
+    }
 }
