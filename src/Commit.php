@@ -30,13 +30,19 @@ class Commit
      * Model yang akan digunakan
      * @property $model string
      */
-    private string $model = 'llama-3.3-70b-versatile';
+    private string $model = 'meta-llama/llama-4-maverick-17b-128e-instruct';
 
     /**
      * System prompt untuk LLM
      * @property $systemPrompt string
      */
     private string $systemPrompt;
+
+    /**
+     * 
+     * @var string
+     */
+    private string $prefix = '';
 
     /**
      * Constructor
@@ -113,7 +119,7 @@ class Commit
     {
         try {
             // Menyiapkan payload untuk Gemini API dengan format yang lebih sederhana
-            $payload = [
+            /* $payload = [
                 'contents' => [
                     [
                         'role' => 'user',
@@ -134,10 +140,63 @@ class Commit
                         ]
                     ]
                 ]
+            ]; 
+            
+            // Membangun URL endpoint
+            $url = rtrim($this->apiEndpoint, '/') . '/models/' . $this->model . ':generateContent?key=' . $this->apiKey;            
+            */
+
+            /* payload untuk OpenAI, Groq dan lainnya */
+            $payload = [
+                'model' => $this->model,
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => "Anda adalah Git commit message generator yang menganalisis perubahan kode dan menghasilkan pesan commit yang terstandarisasi.\nPastikan response dalam format JSON yang valid"
+                    ], [
+                        'role' => 'user',
+                        'content' => "### Berikut adalah output `git diff`:\n" . $this->diff_message . "\n\n"                                             
+                    ],
+                ],
+                'tools' => [
+                    [
+                        'type' => 'function',
+                        'function' => [
+                            'description' => 'Get and format commit message from git diff data',
+                            'name' => 'formatCommitMessage',
+                            'parameters' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'emoji' => [
+                                        'type' => 'string',
+                                        'description' => 'Emoji yang cocok untuk commit message',
+                                    ],
+                                    'type' => [
+                                        'type' => 'string',
+                                        'description' => 'Jenis commit, feat/refactor/fix/chore dan lain sebagainya',
+                                    ],
+                                    'title' => [
+                                        'type' => 'string',
+                                        'description' => 'Judul commit message dengan singkat, padat, dan jelas',
+                                    ],
+                                    'body' => [
+                                        'type' => 'string',
+                                        'description' => "body content dalam bullet point. format:\n- [x] ini deskripsi perubahan pertama \n- [x] ini perubahan kedua \n-[x] perubahan lainnya",
+                                    ],
+                                ],
+                                'required' => ['emoji', 'type', 'title'],
+                            ]
+                        ]
+                    ]
+                ], 
+                'temperature' => 0.2,
+                /* 'response_format' => [
+                    'type' => 'json_object'
+                ] */
             ];
 
-            // Membangun URL endpoint
-            $url = rtrim($this->apiEndpoint, '/') . '/models/' . $this->model . ':generateContent?key=' . $this->apiKey;
+            $url = rtrim($this->apiEndpoint, '/');
+
                         
             // Inisialisasi Guzzle HTTP Client
             $client = new \GuzzleHttp\Client();
@@ -145,7 +204,8 @@ class Commit
             // Melakukan request ke Gemini API menggunakan Guzzle
             $guzzleResponse = $client->post($url, [
                 'headers' => [
-                    'Content-Type' => 'application/json'
+                    'Content-Type' => 'application/json',
+                    'Authorization' => "Bearer {$this->apiKey}"
                 ],
                 'json' => $payload
             ]);
@@ -163,84 +223,49 @@ class Commit
             }
 
             // Parse response dari Gemini API
-            $text = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            /* $text = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
             if (empty($text)) {
                 throw new \Exception('Response kosong dari API');
+            } */
+
+            // parse response dari OpenAI
+            $text = $responseData['choices'][0]['message'];
+            // print_r($text); 
+
+            /* tool call */
+            $tool_call = $text['tool_calls'][0]['function'] ?? [];
+            // print_r($tool_call);
+
+            if(empty($tool_call)){
+                throw new \Exception("Failed tool calling. Please try again !", 500);                
             }
 
-            // Ekstrak JSON dari response text
-            preg_match('/\{.*\}/s', $text, $matches);
-            if (empty($matches[0])) {
-                throw new \Exception('Tidak ditemukan format JSON dalam response');
-            }
+            $tool_data      = $tool_call['arguments'];
+            $function_name  = $tool_call['name'];
 
-            $commitData = json_decode($matches[0], true);
-            if (!$commitData) {
-                throw new \Exception('Format JSON tidak valid dalam response');
-            }
-
-            // Validasi data commit
-            if (!isset($commitData['type']) || !isset($commitData['title']) || !isset($commitData['description'])) {
-                throw new \Exception('Data commit tidak lengkap');
-            }
-
-            return $this->formatCommitMessage($commitData);
+            $result_tool_call = $this->$function_name( json_decode($tool_data, true) );
+            return $result_tool_call;
 
         } catch (\Exception $e) {
             throw new \Exception('LLM API Error: ' . $e->getMessage());
         }
     }
-    
-    private function formatCommitMessage(array $data): string
-    {
-        // Format title line - hilangkan tanda kutip
-        $title = isset($data['emoji']) ? str_replace('"', '', $data['emoji']) . ' ' : '';
-        $title .= str_replace('"', '', $data['type']);
-        if (!empty($data['scope'])) {
-            $title .= '(' . str_replace('"', '', $data['scope']) . ')';
+
+    public function formatCommitMessage(array $data) {
+        $str = '';
+
+        if(!empty($this->prefix)){
+            $str .= $this->prefix . ' ';
         }
-        $title .= ': ' . str_replace('"', '', $data['title']);
-        
-        // Bersihkan deskripsi dari karakter yang bisa menyebabkan masalah
-        $description = [];
-        if (!empty($data['description'])) {
-            foreach ($data['description'] as $point) {
-                $cleanPoint = str_replace(
-                    ['"', "'", '`', '[', ']', '(', ')', '{', '}', '*', '\\', '\n', '\r'], 
-                    '', 
-                    $point
-                );
-                $description[] = '- ' . trim($cleanPoint);
-            }
+
+        $str .=  $data['emoji'].' ' .$data['type'].': '. $data['title'];
+
+        if(isset($data['body']) && !empty($data['body'])){
+            $str .= "\n" . $data['body'];
         }
-        
-        // Format breaking change jika ada
-        $breakingChange = '';
-        if (!empty($data['breaking_change'])) {
-            $breakingChange = "\n\nBREAKING CHANGE: " . str_replace('"', '', $data['breaking_change']);
-        }
-        
-        // Gabungkan semua bagian dengan format yang benar
-        $parts = [];
-        $parts[] = $title;
-        
-        if (!empty($description)) {
-            $parts[] = implode("\n", $description);
-        }
-        
-        if (!empty($breakingChange)) {
-            $parts[] = trim($breakingChange);
-        }
-        
-        // Gabungkan dengan double newline
-        $message = implode("\n\n", array_filter($parts));
-        
-        // Bersihkan karakter kontrol kecuali newline
-        $cleaned = preg_replace('/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/u', '', $message);
-        
-        return $cleaned;
+        return $str;
     }
-    
+  
     private function defaultSystemPrompt(): string
     {
         return 'Anda adalah generator pesan commit Git yang menganalisis perubahan kode dan menghasilkan pesan commit yang distandarisasi. 
@@ -270,7 +295,7 @@ class Commit
     private function promptTemplate(): string
     {
         return '
-            Generate a concise, standardized Git commit message based on the provided data above changes. Follow these guidelines:
+            Hasilkan pesan commit Git yang ringkas dan standar berdasarkan data yang diberikan di atas perubahan. Ikuti pedoman berikut:
             1. Gunakan Conventional Commits standard:
             * `feat`: untuk fitur baru
             * `fix`: untuk perbaikan bug
@@ -309,6 +334,11 @@ class Commit
 
         return true;
     }
-    
+
+    public function setPrefix(string $prefix){
+        $this->prefix = $prefix;
+        return $this;
+    }
+   
 
 }

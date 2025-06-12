@@ -3,17 +3,20 @@
 require_once __DIR__ . '/vendor/autoload.php';
 
 use Ay4t\PCGG\Commit;
-use Dotenv\Dotenv;
 
-//load environment variables
-$dotenv = Dotenv::createImmutable(__DIR__);
-$dotenv->load();
+// Baca isi dari file config.json
+$configContent = file_get_contents(__DIR__ . '/config.json');
 
-// Get the API key from environment variable
-$apiKey = $_SERVER['GEMINI_API_KEY'];
+// Dekode isi JSON dan simpan ke dalam variabel $config
+$config = json_decode($configContent, true);
 
-if (empty($apiKey)) {
-    die("Please set GEMINI_API_KEY environment variable\n");
+if (json_last_error() !== JSON_ERROR_NONE) {
+    // Tangani kesalahan jika decoding JSON gagal
+    throw new Exception('Error decoding JSON: ' . json_last_error_msg());
+}
+
+if (empty($config['api_key'])) {
+    die("Please set API_KEY config variable\n");
 }
 
 // Get git diff
@@ -25,18 +28,8 @@ if (empty($diff)) {
 }
 
 try {
-    // Konfigurasi untuk Google Gemini API
-    $config = [
-        'endpoint' => 'https://generativelanguage.googleapis.com/v1beta',
-        'model' => 'gemini-2.0-flash-exp'
-    ];
-    
-    /* $config = [
-        'endpoint' => 'http://localhost:8081/api',
-        'model' => 'ai-commit-message-generator'
-    ]; */
 
-    $commit = new Commit($apiKey, '', $config);
+    $commit = new Commit($config['api_key'], '', $config);
     $commit->gitDiff($diff);
     $message = $commit->generate();
     echo $message . "\n";
