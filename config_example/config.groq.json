@@ -1,0 +1,6 @@
+{
+    "provider": "groq",
+    "endpoint": "https://api.groq.com/openai/v1/chat/completions",
+    "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "api_key": "your_api_key"
+}

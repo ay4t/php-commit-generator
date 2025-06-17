@@ -8,6 +8,13 @@ namespace Ay4t\PCGG;
  */
 class Commit
 {
+
+    /**
+     * Konfigurasi tambahan
+     * @property $config array
+     */
+    private $config = [];
+
     /**
      * Pesan git diff
      * @property $diff_message string
@@ -55,6 +62,7 @@ class Commit
         $this->apiKey = $apiKey;
         $this->diff_message = $diff_message;
         $this->systemPrompt = $this->defaultSystemPrompt();
+        $this->config = $config;
 
         // Set konfigurasi tambahan jika ada
         if (isset($config['endpoint'])) $this->apiEndpoint = $config['endpoint'];
@@ -118,33 +126,6 @@ class Commit
     private function generateMessage(string $prompt)
     {
         try {
-            // Menyiapkan payload untuk Gemini API dengan format yang lebih sederhana
-            /* $payload = [
-                'contents' => [
-                    [
-                        'role' => 'user',
-                        'parts' => [
-                            [
-                                'text' => "Anda adalah Git commit message generator yang menganalisis perubahan kode dan menghasilkan pesan commit yang terstandarisasi.\n\n" .
-                                         "### Berikut adalah output `git diff`:\n" . 
-                                         $this->diff_message . "\n\n" .
-                                         "Berikan pesan commit dalam format JSON berikut:\n" .
-                                         "{\n" .
-                                         "  \"type\": \"feat/fix/docs/style/refactor/test/chore\",\n" .
-                                         "  \"title\": \"judul singkat (max 50 karakter)\",\n" .
-                                         "  \"description\": [\"poin perubahan 1\", \"poin perubahan 2\"],\n" .
-                                         "  \"emoji\": \"emoji yang sesuai\"\n" .
-                                         "}\n\n" .
-                                         "Pastikan response dalam format JSON yang valid."
-                            ]
-                        ]
-                    ]
-                ]
-            ]; 
-            
-            // Membangun URL endpoint
-            $url = rtrim($this->apiEndpoint, '/') . '/models/' . $this->model . ':generateContent?key=' . $this->apiKey;            
-            */
 
             /* payload untuk OpenAI, Groq dan lainnya */
             $payload = [
@@ -190,10 +171,15 @@ class Commit
                     ]
                 ], 
                 'temperature' => 0.2,
-                /* 'response_format' => [
-                    'type' => 'json_object'
-                ] */
+                'tool_choice' => 'auto',
             ];
+
+            /* jika config provider adalah gemini */
+            if( $this->config['provider'] === 'gemini' ){
+                $payload['response_format'] = [
+                    'type' => 'json_object'
+                ];
+            }
 
             $url = rtrim($this->apiEndpoint, '/');
 
@@ -222,33 +208,53 @@ class Commit
                 throw new \Exception('Invalid JSON response');
             }
 
-            // Parse response dari Gemini API
-            /* $text = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
-            if (empty($text)) {
-                throw new \Exception('Response kosong dari API');
-            } */
-
             // parse response dari OpenAI
             $text = $responseData['choices'][0]['message'];
-            // print_r($text); 
 
             /* tool call */
-            $tool_call = $text['tool_calls'][0]['function'] ?? [];
-            // print_r($tool_call);
+            if( $this->config['provider'] === 'gemini' ){
+                $tool_call = $text['content'] ?? [];
+                $result_tool_call = $this->formatCommitMessage( json_decode($tool_call, true) );
+            } else {
+                $tool_call = $text['tool_calls'][0]['function'] ?? [];
+                if(empty($tool_call)){
+                    throw new \Exception("Failed tool calling. Please try again !", 500);                
+                }
 
-            if(empty($tool_call)){
-                throw new \Exception("Failed tool calling. Please try again !", 500);                
+                $tool_data      = $tool_call['arguments'];
+                $function_name  = $tool_call['name'];
+
+                $result_tool_call = $this->$function_name( json_decode($tool_data, true) );
             }
 
-            $tool_data      = $tool_call['arguments'];
-            $function_name  = $tool_call['name'];
+            /* simpan raw output dari llm kedalam file log */
+            $this->saveLog($text);
 
-            $result_tool_call = $this->$function_name( json_decode($tool_data, true) );
             return $result_tool_call;
 
         } catch (\Exception $e) {
             throw new \Exception('LLM API Error: ' . $e->getMessage());
         }
+    }
+
+    private function saveLog($data) {
+        $log_path = __DIR__ . '/../logs/';
+        $log_file = $log_path . date('Y-m-d') . '.log';
+        /* jika folder belum tersedia, maka otomatis buat */
+        if (!file_exists($log_path)) {
+            mkdir($log_path, 0777, true);
+        }
+
+        /* jika $data adalah string */
+        if(is_string($data)){
+            file_put_contents($log_file, $data . PHP_EOL, FILE_APPEND);
+        }
+
+        /* jika $data adalah array */
+        if(is_array($data)){
+            file_put_contents($log_file, json_encode($data) . PHP_EOL, FILE_APPEND);
+        }
+            
     }
 
     public function formatCommitMessage(array $data) {
