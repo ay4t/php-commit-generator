@@ -27,6 +27,9 @@ if (empty($diff)) {
     die("No staged changes found\n");
 }
 
+// Deteksi sistem operasi
+$isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+
 try {
 
     $commit = new Commit($config['api_key'], '', $config);
@@ -35,8 +38,23 @@ try {
     echo $message . "\n";
 
     // perform git commit with message
-    $commitCmd = "cd $dir && git commit -m '$message'";
-    shell_exec($commitCmd);
+    $escapedMessage = escapeshellarg($message);
+    
+    if ($isWindows) {
+        // Di Windows, gunakan double quotes untuk pesan commit
+        $commitCmd = "cd $dir && git commit -m $escapedMessage";
+    } else {
+        // Di Linux/Unix, gunakan single quotes untuk pesan commit
+        $commitCmd = "cd $dir && git commit -m $escapedMessage";
+    }
+    
+    $result = shell_exec($commitCmd);
+    
+    if ($result === null) {
+        echo "\nPerintah git commit berhasil dijalankan.\n";
+    } else {
+        echo "\nOutput git commit:\n$result\n";
+    }
 
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
