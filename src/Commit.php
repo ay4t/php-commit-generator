@@ -133,7 +133,7 @@ class Commit
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => "Anda adalah Git commit message generator yang menganalisis perubahan kode dan menghasilkan pesan commit yang terstandarisasi.\nPastikan response dalam format JSON yang valid"
+                        'content' => 'Anda adalah Git commit message generator yang menganalisis perubahan kode dan menghasilkan pesan commit yang terstandarisasi.\nPastikan response dalam format JSON yang valid. Output yang seharusnya keluar: { "emoji": "✨", "title": "your title", "type": "feat", "body": "- [x] your desc 1 \n-[x] your desc 2 \n- [x] other" }'
                     ], [
                         'role' => 'user',
                         'content' => "### Berikut adalah output `git diff`:\n" . $this->diff_message . "\n\n"                                             
