@@ -3,3 +3,4 @@ vendor
 .env
 config.json
 logs
+.git-commit-history

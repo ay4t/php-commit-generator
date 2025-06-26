@@ -1,4 +1,0 @@
-[2025-06-24 13:36:22] ✨ feat: Tambahkan penyimpanan dan pengambilan riwayat commit
-- [x] Menyimpan commit message ke dalam file `.git-commit-history`.
-- [x] Menambahkan project directory ke konfigurasi untuk menyimpan history di root project.
-- [x] Menyediakan commit history sebagai konteks ke prompt.

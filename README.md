@@ -9,6 +9,8 @@ A PHP library that generates meaningful and standardized Git commit messages usi
 - Analyzes git diff to understand code changes
 - Generates both commit titles and detailed descriptions
 - Easy integration with existing PHP projects
+- Title prefix support for issue tracking (e.g., ISSUE-123)
+- Commit history tracking for improved context in future commits
 
 ## Requirements
 
@@ -71,10 +73,32 @@ export GROQ_API_KEY=your-groq-api-key
 php generate.php
 ```
 
+3. Additional options:
+```bash
+# Set working directory
+php generate.php -d ./your-project-dir
+
+# Add a title prefix (e.g., issue number)
+php generate.php --prefix="ISSUE-123"
+# or short version
+php generate.php -p "ISSUE-123"
+
+# Configure commit history file
+php generate.php --history-file=".custom-history-file"
+# or short version
+php generate.php -h ".custom-history-file"
+
+# Enable/disable commit history
+php generate.php --enable-history=false
+# or short version
+php generate.php -e false
+```
+
 The script will automatically:
 - Get staged changes using `git diff --staged`
 - Generate an appropriate commit message
 - Output the message ready for use
+- Save commit history for context in future commits (if enabled)
 
 ## Generated Message Format
 
