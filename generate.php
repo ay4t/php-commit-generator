@@ -20,13 +20,10 @@ if (empty($config['api_key'])) {
 }
 
 // Parse command line arguments
-$options = getopt("d:h:e:p:", ["dir:", "history-file:", "enable-history::", "prefix::"]);
+$options = getopt("d:e:p:", ["dir:", "enable-history::", "prefix::"]);
 
 // Get directory
 $dir = isset($options['d']) ? $options['d'] : (isset($options['dir']) ? $options['dir'] : __DIR__);
-
-// Get history file name (optional)
-$historyFile = isset($options['h']) ? $options['h'] : (isset($options['history-file']) ? $options['history-file'] : null);
 
 // Check if history should be enabled (optional)
 $enableHistory = true;
@@ -54,11 +51,6 @@ try {
     $config['project_dir'] = $dir;
 
     $commit = new Commit($config['api_key'], '', $config);
-    
-    // Set history file name if provided
-    if ($historyFile !== null) {
-        $commit->setHistoryFileName($historyFile);
-    }
     
     // Set enable/disable history
     $commit->enableCommitHistory($enableHistory);

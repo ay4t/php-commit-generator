@@ -52,12 +52,6 @@ class Commit
     private string $prefix = '';
     
     /**
-     * Nama file untuk menyimpan history commit
-     * @var string
-     */
-    private string $historyFileName = '.git-commit-history';
-    
-    /**
      * Flag untuk mengaktifkan/menonaktifkan fitur history commit
      * @var bool
      */
@@ -290,9 +284,6 @@ class Commit
             $str .= "\n" . $data['body'];
         }
         
-        // Simpan commit message ke dalam file history
-        $this->saveCommitHistory($str);
-        
         return $str;
     }
   
@@ -371,16 +362,6 @@ class Commit
     }
     
     /**
-     * Mengatur nama file untuk menyimpan history commit
-     * @param string $fileName
-     * @return $this
-     */
-    public function setHistoryFileName(string $fileName){
-        $this->historyFileName = $fileName;
-        return $this;
-    }
-    
-    /**
      * Mengaktifkan/menonaktifkan fitur history commit
      * @param bool $enable
      * @return $this
@@ -389,33 +370,14 @@ class Commit
         $this->enableCommitHistory = $enable;
         return $this;
     }
-    
+
     /**
-     * Menyimpan commit message ke dalam file history
-     * @param string $commitMessage
-     * @return void
+     * Alias untuk mengaktifkan/menonaktifkan fitur history commit (kompatibilitas API)
+     * @param bool $enable
+     * @return $this
      */
-    private function saveCommitHistory(string $commitMessage) {
-        // Jika fitur dinonaktifkan, tidak perlu menyimpan
-        if (!$this->enableCommitHistory) {
-            return;
-        }
-        
-        $historyFile = $this->getHistoryFilePath();
-        $timestamp = date('Y-m-d H:i:s');
-        $formattedEntry = "[{$timestamp}] {$commitMessage}\n";
-        
-        // Append commit message ke file history
-        file_put_contents($historyFile, $formattedEntry, FILE_APPEND);
-    }
-    
-    /**
-     * Mendapatkan path file history
-     * @return string
-     */
-    private function getHistoryFilePath() {
-        $dir = isset($this->config['project_dir']) ? $this->config['project_dir'] : getcwd();
-        return rtrim($dir, '/') . '/' . $this->historyFileName;
+    public function enableGitHistory(bool $enable = true){
+        return $this->enableCommitHistory($enable);
     }
     
     /**
@@ -423,26 +385,31 @@ class Commit
      * @param int $limit Jumlah commit history yang akan diambil
      * @return string
      */
-    private function getCommitHistory(int $limit = 5) {
+    private function getCommitHistory(int $limit = 10) {
         // Jika fitur dinonaktifkan, tidak perlu mengambil history
         if (!$this->enableCommitHistory) {
             return '';
         }
-        
-        $historyFile = $this->getHistoryFilePath();
-        
-        if (!file_exists($historyFile)) {
+
+        // Tentukan direktori proyek (fallback ke cwd)
+        $dir = isset($this->config['project_dir']) ? $this->config['project_dir'] : getcwd();
+
+        // Pastikan ini repository git
+        $gitDir = rtrim($dir, '/');
+        if (!is_dir($gitDir.'/.git')) {
             return '';
         }
-        
-        // Baca file history
-        $content = file_get_contents($historyFile);
-        $lines = explode("\n", $content);
-        $lines = array_filter($lines); // Hapus baris kosong
-        
-        // Ambil n commit terakhir
-        $recentCommits = array_slice($lines, -$limit);
-        
-        return implode("\n", $recentCommits);
+
+        // Jalankan git log
+        $cmd = "cd " . escapeshellarg($gitDir) . " && git log -n " . intval($limit) . " --pretty=format:'%h | %ad | %s' --date=short";
+        $output = [];
+        $returnCode = 0;
+        exec($cmd, $output, $returnCode);
+
+        if ($returnCode !== 0 || empty($output)) {
+            return '';
+        }
+
+        return implode("\n", $output);
     }
 }

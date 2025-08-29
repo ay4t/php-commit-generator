@@ -10,7 +10,7 @@ A PHP library that generates meaningful and standardized Git commit messages usi
 - Generates both commit titles and detailed descriptions
 - Easy integration with existing PHP projects
 - Title prefix support for issue tracking (e.g., ISSUE-123)
-- Commit history tracking for improved context in future commits
+- Commit history context via `git log` (10 commit terakhir)
 
 ## Requirements
 
@@ -83,11 +83,6 @@ php generate.php --prefix="ISSUE-123"
 # or short version
 php generate.php -p "ISSUE-123"
 
-# Configure commit history file
-php generate.php --history-file=".custom-history-file"
-# or short version
-php generate.php -h ".custom-history-file"
-
 # Enable/disable commit history
 php generate.php --enable-history=false
 # or short version
@@ -98,7 +93,7 @@ The script will automatically:
 - Get staged changes using `git diff --staged`
 - Generate an appropriate commit message
 - Output the message ready for use
-- Save commit history for context in future commits (if enabled)
+- (Optional) Include last 10 entries from `git log` as additional context when history is enabled
 
 ## Generated Message Format
 
