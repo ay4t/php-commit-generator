@@ -20,7 +20,7 @@ if (empty($config['api_key'])) {
 }
 
 // Parse command line arguments
-$options = getopt("d:e:p:", ["dir:", "enable-history::", "prefix::"]);
+$options = getopt("d:e:p:l:", ["dir:", "enable-history::", "prefix::", "lang::"]);
 
 // Get directory
 $dir = isset($options['d']) ? $options['d'] : (isset($options['dir']) ? $options['dir'] : __DIR__);
@@ -35,6 +35,9 @@ if (isset($options['e'])) {
 
 // Get title prefix (optional)
 $prefix = isset($options['p']) ? $options['p'] : (isset($options['prefix']) ? $options['prefix'] : null);
+
+// Get language (optional, default: ID)
+$lang = isset($options['l']) ? $options['l'] : (isset($options['lang']) ? $options['lang'] : 'ID');
 
 // Get git diff
 $diff = shell_exec("cd $dir && git diff --staged");
@@ -59,6 +62,9 @@ try {
     if ($prefix !== null) {
         $commit->setPrefix($prefix);
     }
+
+    // Set language (ID or EN)
+    $commit->setLanguage($lang);
     
     $commit->gitDiff($diff);
     $message = $commit->generate();

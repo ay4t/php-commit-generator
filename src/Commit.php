@@ -52,6 +52,12 @@ class Commit
     private string $prefix = '';
     
     /**
+     * Bahasa output LLM (ID atau EN)
+     * @var string
+     */
+    private string $language = 'ID';
+    
+    /**
      * Flag untuk mengaktifkan/menonaktifkan fitur history commit
      * @var bool
      */
@@ -74,6 +80,31 @@ class Commit
         if (isset($config['endpoint'])) $this->apiEndpoint = $config['endpoint'];
         if (isset($config['model'])) $this->model = $config['model'];
         if (isset($config['systemPrompt'])) $this->systemPrompt = $config['systemPrompt'];
+    }
+
+    /**
+     * Set bahasa output (ID atau EN)
+     * @param string $lang
+     * @return $this
+     */
+    public function setLanguage(string $lang = 'ID'){
+        $lang = strtoupper(trim($lang));
+        if(!in_array($lang, ['ID','EN'])){
+            $lang = 'ID';
+        }
+        $this->language = $lang;
+        return $this;
+    }
+
+    /**
+     * Instruksi bahasa untuk menyetir respons LLM
+     */
+    private function getLanguageInstruction(): string
+    {
+        if($this->language === 'EN'){
+            return 'All responses must be in English. Do not use any other language.';
+        }
+        return 'Semua respons harus dalam Bahasa Indonesia. Jangan gunakan bahasa lain.';
     }
 
     /**
@@ -147,7 +178,7 @@ class Commit
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => 'Anda adalah Git commit message generator yang menganalisis perubahan kode dan menghasilkan pesan commit yang terstandarisasi.\nPastikan response dalam format JSON yang valid. Output yang seharusnya keluar: { "emoji": "✨", "title": "your title", "type": "feat", "body": "- [x] your desc 1 \n-[x] your desc 2 \n- [x] other" }'
+                        'content' => 'Anda adalah Git commit message generator yang menganalisis perubahan kode dan menghasilkan pesan commit yang terstandarisasi.\nPastikan response dalam format JSON yang valid. Output yang seharusnya keluar: { "emoji": "✨", "title": "your title", "type": "feat", "body": "- [x] your desc 1 \n-[x] your desc 2 \n- [x] other" }' . "\n\n" . $this->getLanguageInstruction()
                     ], [
                         'role' => 'user',
                         'content' => "### Berikut adalah output `git diff`:\n" . $this->diff_message . "\n\n"                                             
